@@ -157,6 +157,7 @@ def generate_pdf():
         )
 
         BASE_URL = request.url_root
+        HTML(string=rendered_html, base_url=BASE_URL).write_pdf(tmp_file.name)
 
         # ✅ Use `with` to ensure PDF is fully written
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
