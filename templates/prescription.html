@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription - {{ patient_name }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/prescription-style.css', _external=True) }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        @page { size: A4; margin: 10mm; } 
+        .medicine-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        .medicine-table th, .medicine-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+        .medicine-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .subtotal-cell { text-align: right; font-weight: bold; }
+        .patient-detail { font-weight: bold; color: #333; padding-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="letterhead-container">
+
+    <!-- Header -->
+    <header class="header simple-header">
+        <div class="header-content">
+            <div class="hospital-info-left">
+                <h1 class="name">Northern Modern Hospital</h1>
+                <p class="slogan">
+                    111/2 Kawlar Jame Mosjid Road, Ashkona, (Near Hajj Camp) <br> 
+                    Dakshinkhan, Dhaka-1230
+                </p>
+            </div>
+
+            <div class="ref-info-right">
+                <p class="ref-text">{{ doctor_name }}</p> 
+                <p class="date-text">{{ specialization }}</p> 
+                <p class="address-small">Registration No: {{ reg_no }}</p>
+                <p class="date-text">Phone: {{ phone }}</p>
+                <p class="date-text" style="font-size: 0.9em;">Date: {{ current_date }}</p>
+            </div>
+        </div>
+        <div class="divider-dots-simple"></div>
+    </header>
+
+    <!-- Main Body -->
+    <main class="main-body">
+        <!-- Patient Info -->
+        <div class="info-row">
+            <div class="label-group">
+                <span class="label">Patient Name:</span>
+                <span class="patient-detail">{{ patient_name }}</span>
+            </div>
+            <div class="label-group">
+                <span class="label">Age:</span>
+                <span class="patient-detail">{{ age }}</span>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div class="label-group">
+                <span class="label">Sex:</span>
+                <span class="patient-detail">{{ sex }}</span>
+            </div>
+            <div class="label-group">
+                <span class="label">Patient ID:</span>
+                <span class="patient-detail">{{ patient_id }}</span>
+            </div>
+        </div>
+
+        <!-- Medicine Table -->
+        <h2 style="margin-top: 30px; border-bottom: 2px solid #ccc; padding-bottom: 5px; color: var(--color-blue);">
+            <i class="fas fa-pills"></i> Rx: Medicines
+        </h2>
+
+        <table class="medicine-table">
+            <thead>
+                <tr>
+                    <th>SL</th>
+                    <th>Generic</th>
+                    <th>Brand</th>
+                    <th>Strength / Type</th>
+                    <th>When</th>
+                    <th>Meal</th>
+                    <th>Qty</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in medicines %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.generic }}</td>
+                    <td>{{ item.brand }}</td>
+                    <td>{{ item.strength }} / {{ item.type }}</td>
+                    <td>{{ item.time_schedule }}</td>
+                    <td>{{ item.meal_time }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td class="subtotal-cell">৳ {{ "%.2f"|format(item.price | float * item.quantity | int) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="text-align: right; margin-top: 15px; font-size: 1.1em; padding-right: 15px;">
+            <strong>Total Estimated Cost: ৳ {{ "%.2f"|format(total_cost) }}</strong>
+        </div>
+
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <span class="label" style="font-size: 1.1em; color: var(--color-blue);">Next Appointment After:</span>
+                <span class="patient-detail" style="font-size: 1.1em; margin-left: 10px;">{{ next_appointment }}</span>
+            </div>
+            <div style="text-align: right; padding-right: 20px;">
+                <p style="margin-top: 40px; border-top: 1px dotted #333; padding-top: 5px;">Signature of Doctor</p>
+            </div>
+        </div>
+
+        <div class="stethoscope-placeholder">
+            <i class="fas fa-stethoscope large-icon"></i>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-bar teal-bg">
+            <div class="contact-box">
+                <i class="fas fa-phone-alt"></i> Contact
+            </div>
+            <div class="contact-details">
+                <div class="detail-item">
+                    <i class="fas fa-phone-alt"></i> +880 1755-514661
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-envelope"></i> info@nub.ac.bd<br>
+                    <span class="small-line">https://nub.ac.bd/</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-map-marker-alt"></i> 111/2 Kawlar Jame Mosjid Road,<br>
+                    <span class="small-line">Ashkona, Dakshinkhan, Dhaka-1230</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</div>
+</body>
+</html>

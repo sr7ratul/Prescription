@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🩺 Prescription Builder</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+  <div class="header-bar">
+    <div><label>Patient Name:</label><input type="text" id="patient_name" placeholder="Name"></div>
+    <div><label>Age:</label><input type="number" id="age" placeholder="Age"></div>
+    <div><label>Sex:</label>
+      <select id="sex">
+        <option value="">--</option>
+        <option>Male</option><option>Female</option>
+      </select>
+    </div>
+    <div><label>Patient ID:</label><input type="text" id="patient_id" value="NUB-0"></div>
+  </div>
+
+  <div class="container">
+    <div class="input-panel">
+      <h1>Medicine Selector</h1>
+
+      <label for="generic_name">Select Generic Name:</label>
+      <select id="generic_name" onchange="fetchDependentOptions(event)">
+        <option value="">-- Choose Generic --</option>
+        {% for generic in generic_options %}
+          <option value="{{ generic }}">{{ generic }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="strength">Select Strength:</label>
+      <select id="strength" onchange="fetchDependentOptions(event)">
+        <option value="">-- Select Strength --</option>
+      </select>
+
+      <label for="type">Select Type:</label>
+      <select id="type" onchange="fetchMedicineOptions()">
+        <option value="">-- Select Type --</option>
+      </select>
+
+      <div id="medicine_options_table_container" style="margin-top: 20px;"></div>
+    </div>
+
+    <div class="output-panel">
+      <h2>Prescription Summary</h2>
+      <p id="no_items_message" style="color: grey;">No items added yet.</p>
+
+      <table id="prescription_table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Generic</th>
+            <th>Brand</th>
+            <th>Str./Type</th>
+            <th>Qty</th>
+            <th>When</th>
+            <th>Meal</th>
+            <th>Subtotal</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <label>Next Appointment After:</label>
+      <select id="next_appointment">
+        <option value="7 Days">7 Days</option>
+        <option value="15 Days">15 Days</option>
+        <option value="1 Month">1 Month</option>
+        <option value="2 Months">2 Months</option>
+      </select>
+
+      <div id="prescription_footer" style="display:none; margin-top: 15px;">
+        <div>Total Estimated Cost: <span id="total_cost" class="price">৳ 0.00</span></div>
+        <button type="button" id="generate_btn" onclick="generateFinalOutput()">💾 Generate Prescription PDF</button>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
