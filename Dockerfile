@@ -1,29 +1,29 @@
-# Use official Python base image
 FROM python:3.11-slim
 
-# Set work directory
-WORKDIR /app
-
-# Install system dependencies required by WeasyPrint
+# Install WeasyPrint dependencies
 RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
+    build-essential \
+    libpango1.0-0 \
     libcairo2 \
     libgdk-pixbuf-2.0-0 \
-    libglib2.0-0 \
     libffi-dev \
-    fonts-liberation \
     shared-mime-info \
+    libpangoft2-1.0-0 \
+    fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Set working directory
+WORKDIR /app
 
-# Copy the rest of your project
+# Copy project files
 COPY . .
 
-# Expose port
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose port (Railway default)
 EXPOSE 8080
 
-# Start the app
+# Run app
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080"]
