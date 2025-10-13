@@ -115,69 +115,41 @@ def get_details():
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
-    """Generate prescription PDF safely (prevents double download / 0-byte)"""
     try:
         data = request.get_json(force=True)
         if isinstance(data, list):
             data = data[0] if data else {}
 
         patient_name = data.get('patient_name', 'Unknown')
-        age = data.get('age', '')
-        sex = data.get('sex', '')
-        patient_id = data.get('patient_id', 'NUB-0')
-        next_appointment = data.get('next_appointment', 'N/A')
         medicines = data.get('medicines', [])
+        total_cost = data.get('total_cost', 0)
 
-        # Calculate total estimated cost
-        total_cost = 0
-        for med in medicines:
-            try:
-                price_str = med.get('price', med.get('price_raw', 0))
-                price = float(price_str)
-                quantity = int(med.get('quantity', 1))
-                total_cost += price * quantity
-            except Exception as e:
-                logger.warning(f"⚠️ Price/quantity error for {med}: {e}")
-
-        # Render HTML template
         rendered_html = render_template(
             'prescription.html',
-            doctor_name="Dr. SAKIB AL HASAN",
-            specialization="MBBS, FCPS (Medicine)",
-            reg_no="BMDC-12345",
-            phone="01762057707",
             patient_name=patient_name,
-            age=age,
-            sex=sex,
-            patient_id=patient_id,
-            next_appointment=next_appointment,
             medicines=medicines,
-            total_cost=total_cost,
-            current_date=datetime.now().strftime("%d %B %Y")
+            total_cost=total_cost
         )
 
-        BASE_URL = request.url_root
-        HTML(string=rendered_html, base_url=BASE_URL).write_pdf(tmp_file.name)
+        # ✅ Use local static directory as base_url (works on Railway)
+        base_url = os.path.join(app.root_path, 'static')
 
-        # ✅ Use `with` to ensure PDF is fully written
+        # ✅ Create temp file properly
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            HTML(string=rendered_html, base_url=BASE_URL).write_pdf(tmp_file.name)
-            tmp_file_path = tmp_file.name
+            pdf_path = tmp_file.name
 
-        # Send the file once and delete after sending
-        response = send_file(tmp_file_path, as_attachment=True, download_name="Prescription.pdf")
-        @response.call_on_close
-        def cleanup():
-            try:
-                os.remove(tmp_file_path)
-            except:
-                pass
+        # ✅ Generate PDF safely
+        HTML(string=rendered_html, base_url=base_url).write_pdf(pdf_path)
 
-        return response
+        # ✅ Return file for download
+        return send_file(pdf_path, as_attachment=True, download_name="Prescription.pdf")
 
     except Exception as e:
-        logger.exception(f"❌ PDF generation failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        import traceback, sys
+        traceback.print_exc(file=sys.stderr)
+        app.logger.error(f"❌ PDF generation failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 # -------------------------
 # MAIN ENTRY
