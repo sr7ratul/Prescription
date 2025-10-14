@@ -178,11 +178,11 @@ def generate_pdf():
             current_date=current_date
         )
 
-        base_url = os.path.join(app.root_path, 'static')
-
+        # ✅ Correct indentation + proper base_url for Railway
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             pdf_path = tmp_file.name
 
+        base_url = os.path.abspath(os.path.dirname(__file__))  # ✅ for deployed environment
         HTML(string=rendered_html, base_url=base_url).write_pdf(pdf_path)
 
         return send_file(pdf_path, as_attachment=True, download_name="Prescription.pdf")
