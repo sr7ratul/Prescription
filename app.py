@@ -3,26 +3,29 @@ import logging
 import json
 import tempfile
 from datetime import datetime
+
+import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from weasyprint import HTML
 from pymongo import MongoClient
-import pandas as pd
 from dotenv import load_dotenv
-from whitenoise import WhiteNoise  # ✅ Added
+from whitenoise import WhiteNoise  # ✅ for serving static files on Railway
 
 # -------------------------
-# Load environment variables
+# App Configuration
 # -------------------------
-load_dotenv()
+load_dotenv()  # Load .env variables
 
-# --- Configuration ---
 MONGO_URI = os.environ.get("MONGO_URI")
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')  # ✅ Added for Railway static files
+
+# ✅ Enable WhiteNoise for serving static files in production
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
+
+# ✅ Logging setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
 
 # -------------------------
 # Serve static files manually (extra fallback)

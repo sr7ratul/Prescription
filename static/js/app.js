@@ -105,28 +105,45 @@ function renderPrescriptionTable(){
   document.getElementById('no_items_message').style.display=prescriptionItems.length?'none':'block';
 }
 
-function generateFinalOutput(){
-  if(prescriptionItems.length===0) return alert("Add medicines first!");
+function generateFinalOutput() {
+  if (prescriptionItems.length === 0) return alert("Add medicines first!");
 
-  // ✅ Disable the button and show loading
   const btn = document.querySelector('#generate_btn');
-  if(btn){
+  if (btn) {
     btn.disabled = true;
     btn.textContent = "Generating PDF...";
   }
+
+  const totalElement = document.getElementById('total_cost');
+  let total_cost = 0;
+  if (totalElement) {
+    const match = totalElement.textContent.match(/[\d,\.]+/);
+    total_cost = match ? parseFloat(match[0].replace(/,/g, '')) : 0;
+  }
+
+  // ✅ এখানে চেক করবো কত total পাঠানো হচ্ছে
+  console.log("💰 Total cost being sent:", total_cost);
 
   const data = {
     patient_name: document.getElementById('patient_name').value || 'Unknown',
     age: document.getElementById('age').value || '',
     sex: document.getElementById('sex').value || '',
     patient_id: document.getElementById('patient_id').value || 'NUB-0',
-    next_appointment: document.getElementById('next_appointment').value,
-    medicines: prescriptionItems
+    next_appointment: document.getElementById('next_appointment').value || 'As Advised',
+    medicines: prescriptionItems,
+    total_cost: total_cost,
+    doctor_name: "Dr. Sakib",
+    specialization: "General Physician",
+    reg_no: "REG-1234",
+    phone: "+8801XXXXXXXXX"
   };
 
-  fetch('/generate_pdf',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+  // ✅ এখানে পুরো data console-এ print করবো
+  console.log("🧾 Sending data to server:", data);
+
+  fetch('/generate_pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })
   .then(r => r.blob())
@@ -143,8 +160,7 @@ function generateFinalOutput(){
     alert("Failed to generate PDF. See console for details.");
   })
   .finally(() => {
-    // ✅ Re-enable button and reset text
-    if(btn){
+    if (btn) {
       btn.disabled = false;
       btn.textContent = "💾 Generate Prescription PDF";
     }
