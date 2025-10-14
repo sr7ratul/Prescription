@@ -1,6 +1,7 @@
 Flask
+gunicorn
+weasyprint
+pandas
 pymongo
 python-dotenv
-pandas
-WeasyPrint
-gunicorn
+whitenoise
