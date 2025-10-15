@@ -1,29 +1,18 @@
 import os
 import logging
-import json
 import tempfile
 from datetime import datetime
-
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from weasyprint import HTML
-from pymongo import MongoClient
-from dotenv import load_dotenv
-from whitenoise import WhiteNoise  # ✅ for serving static files on Railway
+from whitenoise import WhiteNoise  # ✅ for serving static files (e.g., on Railway)
 
 # -------------------------
 # App Configuration
 # -------------------------
-load_dotenv()  # Load .env variables
-
-MONGO_URI = os.environ.get("MONGO_URI")
-
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-
-# ✅ Enable WhiteNoise for serving static files in production
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
 
-# ✅ Logging setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -32,44 +21,56 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 # -------------------------
 @app.route('/static/<path:filename>')
 def staticfiles(filename):
-    return send_from_directory(app.static_folder, filename)  # ✅ ensures static always served
-
+    return send_from_directory(app.static_folder, filename)
 
 # -------------------------
-# MongoDB Connection
+# Load and clean CSV data
 # -------------------------
 try:
-    if not MONGO_URI:
-        raise ValueError("MONGO_URI is missing in .env file")
+    csv_path = os.path.join(os.path.dirname(__file__), "medicines.csv")
 
-    client = MongoClient(MONGO_URI)
-    db = client["prescription_db"]
-    collection = db["medicines"]
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError("❌ medicines.csv file not found in root folder")
 
-    all_data = list(collection.find({}, {"_id": 0}))
-    if not all_data:
-        raise ValueError("No medicine data found in MongoDB collection")
+    df = pd.read_csv(csv_path)
 
-    df_cleaned = pd.DataFrame(all_data)
+    # ✅ Clean Price (handles various messy formats)
+    df['Price_Clean'] = (
+        df['Price']
+        .astype(str)
+        .str.replace(r'.*?:\s*৳\s*', '', regex=True)
+        .str.replace(r'[^\d\.]', '', regex=True)
+        .replace('', '0')
+    )
+
+    # ✅ Fix multi-dot numbers like "10.256.00"
+    df['Price_Clean'] = df['Price_Clean'].apply(
+        lambda x: x if x.count('.') <= 1 else x[:x.find('.', x.find('.') + 1)]
+    )
+
+    df['Price_Clean'] = pd.to_numeric(df['Price_Clean'], errors='coerce').fillna(0.0)
+
+    # ✅ Drop rows with missing Strength
+    df_cleaned = df.dropna(subset=['Strength']).copy()
+
+    # ✅ Normalize text columns
     df_cleaned['Generic_Clean'] = df_cleaned['Generic'].astype(str).str.strip().str.lower()
     df_cleaned['Strength'] = df_cleaned['Strength'].astype(str).str.strip()
     df_cleaned['Type'] = df_cleaned['Type'].astype(str).str.strip()
 
-    logger.info(f"✅ Loaded {len(df_cleaned)} medicines from MongoDB")
+    logger.info(f"✅ Loaded {len(df_cleaned)} medicines from local CSV successfully.")
 
 except Exception as e:
-    logger.error(f"❌ MongoDB connection failed: {e}")
+    logger.error(f"❌ Failed to load local CSV data: {e}")
     df_cleaned = pd.DataFrame()
-
 
 # -------------------------
 # Routes
 # -------------------------
 @app.route('/')
 def index():
-    """Main page: Load all unique generic options"""
     if df_cleaned.empty:
-        return render_template('index.html', error="Error: Could not load data from MongoDB.")
+        return render_template('index.html', error="Error: Could not load data from local CSV.")
 
     generic_options = sorted(df_cleaned['Generic_Clean'].dropna().unique().tolist())
     generic_options = [g.title() for g in generic_options]
@@ -78,7 +79,6 @@ def index():
 
 @app.route('/get_options', methods=['POST'])
 def get_options():
-    """Fetch Strength and Type options based on the selected Generic name."""
     try:
         data = request.get_json()
         generic = data.get('generic', '').strip().lower()
@@ -98,7 +98,6 @@ def get_options():
 
 @app.route('/get_details', methods=['POST'])
 def get_details():
-    """Fetch available brand options for a given generic, strength, and type."""
     try:
         data = request.get_json()
         generic = data.get('generic', '').strip().lower()
@@ -114,19 +113,14 @@ def get_details():
         if df_filtered.empty:
             return jsonify({'error': 'No brands found.'}), 404
 
-        df_filtered['Price_Clean'] = pd.to_numeric(
-            df_filtered.get('Price_Clean', df_filtered.get('Price', 0)),
-            errors='coerce'
-        ).fillna(0.0)
-
         options = []
         for _, row in df_filtered.iterrows():
             options.append({
                 'generic': row.get('Generic_Clean', '').title(),
                 'medicine_name': row.get('Medicine Name', ''),
                 'brand': row.get('Brand', ''),
-                'price': f"{row['Price_Clean']:.2f}",
-                'price_raw': row['Price_Clean'],
+                'price': f"৳ {row['Price_Clean']:.2f}",
+                'price_raw': float(row['Price_Clean']),
                 'strength': row.get('Strength', ''),
                 'type': row.get('Type', ''),
                 'quantity': 1,
@@ -142,13 +136,13 @@ def get_details():
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
-    """Generate prescription PDF and return it for download."""
     try:
         data = request.get_json(force=True)
+
+        # ✅ JS থেকে আসা JSON structure handle করা
         if isinstance(data, list):
             data = data[0] if data else {}
 
-        # Patient and doctor info
         patient_name = data.get('patient_name', 'Unknown')
         age = data.get('age', '')
         sex = data.get('sex', '')
@@ -158,9 +152,18 @@ def generate_pdf():
         reg_no = data.get('reg_no', '')
         phone = data.get('phone', '')
         medicines = data.get('medicines', [])
-        total_cost = data.get('total_cost', 0)
         next_appointment = data.get('next_appointment', 'As Advised')
         current_date = datetime.now().strftime('%d-%m-%Y')
+
+        # ✅ total_cost হিসাব backend এও verify করব
+        total_cost = 0
+        for m in medicines:
+            try:
+                subtotal = float(m.get('price_raw', 0)) * int(m.get('quantity', 1))
+                m['subtotal'] = subtotal
+                total_cost += subtotal
+            except:
+                m['subtotal'] = 0
 
         rendered_html = render_template(
             'prescription.html',
@@ -178,19 +181,17 @@ def generate_pdf():
             current_date=current_date
         )
 
-        # ✅ Correct indentation + proper base_url for Railway
+        base_url = os.path.join(app.root_path, 'static')
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             pdf_path = tmp_file.name
 
-        base_url = os.path.abspath(os.path.dirname(__file__))  # ✅ for deployed environment
         HTML(string=rendered_html, base_url=base_url).write_pdf(pdf_path)
-
         return send_file(pdf_path, as_attachment=True, download_name="Prescription.pdf")
 
     except Exception as e:
         logger.exception(f"❌ PDF generation failed: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # -------------------------
 # Main Entry

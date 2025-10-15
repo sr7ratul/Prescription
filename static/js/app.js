@@ -41,7 +41,8 @@ function renderMedicineTable(options){
   <table><thead><tr><th>Brand</th><th>Price</th><th>Add</th></tr></thead><tbody>`;
   options.forEach(o=>{
     const esc=JSON.stringify(o).replace(/'/g,"&apos;");
-    html+=`<tr><td>${o.brand}</td><td>৳ ${o.price}</td>
+    // ✅ এখানে "৳" দ্বিগুণ না হয় সে জন্য শুধু o.price দেখানো হয়েছে
+    html+=`<tr><td>${o.brand}</td><td>${o.price}</td>
     <td><button class='add-btn-small' data-item='${esc}' onclick='addToPrescription(this)'>Add</button></td></tr>`;
   });
   document.getElementById('medicine_options_table_container').innerHTML=html+"</tbody></table>";
@@ -74,8 +75,11 @@ function renderPrescriptionTable(){
   tb.innerHTML=''; 
   let total=0;
   prescriptionItems.forEach((it,i)=>{
-    const subtotal=(parseFloat(it.price)||0)*(parseInt(it.quantity)||1);
-    total+=subtotal;
+    // ✅ price_raw থাকলে সেটা ব্যবহার করব, না থাকলে price থেকে সংখ্যা বের করব
+    const priceVal = parseFloat(it.price_raw || it.price.toString().replace(/[^\d.]/g,'')) || 0;
+    const subtotal = priceVal * (parseInt(it.quantity)||1);
+    total += subtotal;
+
     tb.innerHTML+=`
     <tr>
       <td>${it.generic}</td>
@@ -85,17 +89,17 @@ function renderPrescriptionTable(){
       <td>
         <select onchange='updateField(${i},this.value,"time_schedule")'>
           <option value='1+1+1' ${it.time_schedule==='1+1+1'?'selected':''}>1+1+1</option>
-          <option value='1+0+0' ${it.time_schedule==='1+0+0'?'selected':''}>1+0+1</option>
+          <option value='1+0+1' ${it.time_schedule==='1+0+1'?'selected':''}>1+0+1</option>
           <option value='0+0+1' ${it.time_schedule==='0+0+1'?'selected':''}>0+0+1</option>
-          </select>
+        </select>
       </td>
       <td>
         <select onchange='updateField(${i},this.value,"meal_time")'>
           <option value='After Meal' ${it.meal_time==='After Meal'?'selected':''}>After Meal</option>
           <option value='Before Meal' ${it.meal_time==='Before Meal'?'selected':''}>Before Meal</option>
-          </select>
+        </select>
       </td>
-      <td class='price'>৳ ${(subtotal).toFixed(2)}</td>
+      <td class='price'>৳ ${subtotal.toFixed(2)}</td>
       <td><button class='remove-btn' onclick='removeFromPrescription(${i})'>X</button></td>
     </tr>`;
   });
@@ -121,7 +125,6 @@ function generateFinalOutput() {
     total_cost = match ? parseFloat(match[0].replace(/,/g, '')) : 0;
   }
 
-  // ✅ এখানে চেক করবো কত total পাঠানো হচ্ছে
   console.log("💰 Total cost being sent:", total_cost);
 
   const data = {
@@ -138,7 +141,6 @@ function generateFinalOutput() {
     phone: "+8801XXXXXXXXX"
   };
 
-  // ✅ এখানে পুরো data console-এ print করবো
   console.log("🧾 Sending data to server:", data);
 
   fetch('/generate_pdf', {
