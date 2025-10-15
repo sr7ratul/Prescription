@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>🩺 Prescription Builder</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css',_external=True) }}">
+  <!-- ✅ Correct CSS link for Flask static -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <body>
 
@@ -75,11 +76,11 @@
       <div id="prescription_footer" style="display:none; margin-top: 15px;">
         <div>Total Estimated Cost: <span id="total_cost" class="price">৳ 0.00</span></div>
         <button type="button" id="generate_btn" onclick="generateFinalOutput()">💾 Generate Prescription PDF</button>
-
       </div>
     </div>
   </div>
 
+  <!-- ✅ JS inclusion -->
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

@@ -5,13 +5,13 @@ from datetime import datetime
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from weasyprint import HTML
-from whitenoise import WhiteNoise  # ✅ for serving static files (e.g., on Railway)
+# from whitenoise import WhiteNoise  # ❌ Not needed in Render/Docker environment
 
 # -------------------------
 # App Configuration
 # -------------------------
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
+# app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')  # Commented for Docker
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -197,5 +197,5 @@ def generate_pdf():
 # Main Entry
 # -------------------------
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
