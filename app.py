@@ -165,6 +165,7 @@ def generate_pdf():
             except:
                 m['subtotal'] = 0
 
+        # ✅ HTML Render
         rendered_html = render_template(
             'prescription.html',
             patient_name=patient_name,
@@ -181,12 +182,21 @@ def generate_pdf():
             current_date=current_date
         )
 
-        base_url = os.path.join(app.root_path, 'static')
+        # ✅ Absolute CSS path setup
+        css_path = os.path.join(app.root_path, 'static', 'css', 'prescription-style.css')
+        base_url = os.path.abspath(os.path.dirname(__file__))
 
+        # ✅ Temporary PDF তৈরি
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             pdf_path = tmp_file.name
 
-        HTML(string=rendered_html, base_url=base_url).write_pdf(pdf_path)
+        # ✅ Generate PDF with external CSS
+        from weasyprint import CSS
+        HTML(string=rendered_html, base_url=base_url).write_pdf(
+            pdf_path,
+            stylesheets=[CSS(css_path)]
+        )
+
         return send_file(pdf_path, as_attachment=True, download_name="Prescription.pdf")
 
     except Exception as e:
