@@ -6,6 +6,7 @@ import pandas as pd
 from pymongo import MongoClient
 import base64
 import io
+from bson import ObjectId
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from weasyprint import HTML
 # from whitenoise import WhiteNoise  # ❌ Not needed in Render/Docker environment
@@ -220,6 +221,20 @@ def generate_pdf():
     except Exception as e:
         logger.exception(f"❌ PDF generation failed: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/get_pdf/<id>')
+def get_pdf(id):
+    record = pdf_collection.find_one({"_id": ObjectId(id)})
+    if not record:
+        return "PDF not found", 404
+
+    pdf_data = base64.b64decode(record['pdf_data'])
+    return send_file(
+    io.BytesIO(pdf_data),
+    mimetype='application/pdf',
+    as_attachment=False
+    )
+
 
 # -------------------------
 # Main Entry
