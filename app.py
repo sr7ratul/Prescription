@@ -3,9 +3,22 @@ import logging
 import tempfile
 from datetime import datetime
 import pandas as pd
+from pymongo import MongoClient
+import base64
+import io
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from weasyprint import HTML
 # from whitenoise import WhiteNoise  # ❌ Not needed in Render/Docker environment
+
+# MongoDB connection setup
+from dotenv import load_dotenv
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_DB = os.getenv("MONGO_DB")
+
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
+pdf_collection = db["prescriptions"]  # new collection
 
 # -------------------------
 # App Configuration
@@ -138,8 +151,6 @@ def get_details():
 def generate_pdf():
     try:
         data = request.get_json(force=True)
-
-        # ✅ JS থেকে আসা JSON structure handle করা
         if isinstance(data, list):
             data = data[0] if data else {}
 
@@ -155,7 +166,6 @@ def generate_pdf():
         next_appointment = data.get('next_appointment', 'As Advised')
         current_date = datetime.now().strftime('%d-%m-%Y')
 
-        # ✅ total_cost হিসাব backend এও verify করব
         total_cost = 0
         for m in medicines:
             try:
@@ -165,7 +175,6 @@ def generate_pdf():
             except:
                 m['subtotal'] = 0
 
-        # ✅ HTML Render
         rendered_html = render_template(
             'prescription.html',
             patient_name=patient_name,
@@ -182,22 +191,31 @@ def generate_pdf():
             current_date=current_date
         )
 
-        # ✅ Absolute CSS path setup
         css_path = os.path.join(app.root_path, 'static', 'css', 'prescription-style.css')
-        base_url = os.path.abspath(os.path.dirname(__file__))
-
-        # ✅ Temporary PDF তৈরি
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            pdf_path = tmp_file.name
-
-        # ✅ Generate PDF with external CSS
         from weasyprint import CSS
-        HTML(string=rendered_html, base_url=base_url).write_pdf(
-            pdf_path,
+
+        # ✅ Generate PDF directly in memory (no temp file)
+        pdf_bytes = HTML(string=rendered_html, base_url=request.host_url).write_pdf(
             stylesheets=[CSS(css_path)]
         )
 
-        return send_file(pdf_path, as_attachment=True, download_name="Prescription.pdf")
+        # ✅ Save to MongoDB (Base64 encoded)
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        pdf_doc = {
+            "patient_name": patient_name,
+            "doctor_name": doctor_name,
+            "created_at": datetime.now(),
+            "pdf_data": pdf_base64
+        }
+        pdf_collection.insert_one(pdf_doc)
+
+        # ✅ Return the generated PDF as download
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            as_attachment=True,
+            download_name=f"{patient_name}_Prescription.pdf",
+            mimetype="application/pdf"
+        )
 
     except Exception as e:
         logger.exception(f"❌ PDF generation failed: {e}")

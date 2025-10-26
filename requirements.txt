@@ -4,3 +4,4 @@ weasyprint
 pandas
 python-dotenv
 whitenoise
+pymongo
