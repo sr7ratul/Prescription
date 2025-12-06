@@ -168,3 +168,42 @@ function generateFinalOutput() {
     }
   });
 }
+
+// =================== AUTO FILL FROM URL ===================
+function getParam(k) {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    return p.has(k) ? p.get(k) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clean(v) {
+  return v ? String(v).replace(/[<>]/g, "").trim() : "";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const nameInput = document.getElementById("patient_name");
+  const ageInput = document.getElementById("age");
+  const sexInput = document.getElementById("sex");
+
+  // read URL params
+  const qName = clean(getParam("name"));
+  const qAge  = clean(getParam("age"));
+  const qSex  = clean(getParam("sex"));
+
+  if (qName && nameInput && !nameInput.value)
+    nameInput.value = qName;
+
+  if (qAge && ageInput && !ageInput.value)
+    ageInput.value = qAge.replace(/[^\d]/g, "");
+
+  if (qSex && sexInput && !sexInput.value) {
+    const s = qSex.toLowerCase();
+    if (s.startsWith("m")) sexInput.value = "Male";
+    else if (s.startsWith("f")) sexInput.value = "Female";
+    else sexInput.value = qSex;
+  }
+});
+// =================== END AUTO FILL ===================
